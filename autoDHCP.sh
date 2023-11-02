@@ -45,6 +45,49 @@ red () {
 	sudo cat $arch >> /etc/dhcp/dhcpd.conf
 }
 
+hosts () {
+	arch=hosts_$USER.conf
+        cat template-host.conf > $arch
+        read -p "Añadir host con dirección fija: [Y/n] " res
+        if [ "$res" != "" ]; then
+                read -p "Nombre del host fijo: " host
+                sed -i "s/host cambiar_nombre/host $host/" $arch
+                read -p "Direccion MAC: " mac
+                sed -i "s/#hardware ethernet cambiar_eth;/hardware ethernet $mac;/" $arch
+                read -p "Configurar direccion fija: " fixed
+                sed -i "s/#fixed-address cambiar_fixed;/fixed-address $fixed/;" $arch
+                read -p "Configurar DNS: " dns
+                sed -i "s/#option domain-name-servers cambiar_dns;/option domain-name-servers $dns;/" $arch
+                read -p "Configurar direccion gateway: " router
+                sed -i "s/#option routers cambiar_routers;/option routers $router;/" $arch
+                sed -i "/group {/r $arch" group-hosts.txt
+        fi
+}
+add () {
+	cat group.conf > group-hosts.txt
+	cat group-hosts.txt
+}
+insert () {
+	cat group-hosts.txt
+	sudo cat group-hosts.txt >> /etc/dhcp/dhcpd.conf
+}
+
+menu () {
+	while true
+	do
+		select accion in addhostToGroup addgroup insertINTODHCP salir
+		do
+			case $accion in
+				"addhostToGroup") hosts;;
+				"addgroup") add;;
+				"insertINTODHCP") insert;;
+				"salir") return 0;;
+			esac
+		done
+	done
+
+}
+
 read -p "Quieres instalar isc-dhcp-server [Y/n] " res
 if [ $res == "Y" ]; then
 	sudo apt install isc-dhcp-server
@@ -55,9 +98,7 @@ if [ $res == "Y" ]; then
 		sudo sed -i "s/INTERFACESv4=\"\"/INTERFACESv4=\"$conf\"/"  /etc/default/isc-dhcp-server
 		cat /etc/default/isc-dhcp-server | grep "INTERFACESv4"
 		red
-		sudo systemctl restart isc-dhcp-server
-		sleep 10
-		sudo systemctl status isc-dhcp-server
+		menu
 	fi
 fi
 
